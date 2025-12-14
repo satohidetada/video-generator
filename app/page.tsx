@@ -13,7 +13,6 @@ type DropZoneProps = {
 
 function DropZone({ label, accept, file, onFile }: DropZoneProps) {
   const [dragging, setDragging] = useState(false)
-  const hasError = !file
 
   const onDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault()
@@ -31,7 +30,7 @@ function DropZone({ label, accept, file, onFile }: DropZoneProps) {
       onDragLeave={() => setDragging(false)}
       onDrop={onDrop}
       style={{
-        border: `2px dashed ${hasError ? '#e53935' : '#666'}`,
+        border: `2px dashed ${file ? '#666' : '#e53935'}`,
         borderRadius: 12,
         padding: 20,
         marginBottom: 20,
@@ -60,7 +59,7 @@ function DropZone({ label, accept, file, onFile }: DropZoneProps) {
         />
       </label>
 
-      <div style={{ marginTop: 10, fontSize: 14, opacity: 0.85 }}>
+      <div style={{ marginTop: 10, fontSize: 14 }}>
         {file ? `選択中: ${file.name}` : '未選択'}
       </div>
 
@@ -107,8 +106,6 @@ export default function Page() {
       '-i', 'image.png',
       '-i', 'audio.mp3',
       '-c:v', 'libx264',
-      '-tune', 'stillimage',
-      '-c:a', 'aac',
       '-pix_fmt', 'yuv420p',
       '-shortest',
       'output.mp4',
@@ -116,39 +113,31 @@ export default function Page() {
 
     const data = await ffmpeg.readFile('output.mp4')
 
-    const videoData =
-      data instanceof Uint8Array
-        ? data
-        : new TextEncoder().encode(data)
+    // ★ ここが最重要ポイント
+    const buffer = data instanceof Uint8Array
+      ? data.buffer.slice(0)
+      : data
 
-    const url = URL.createObjectURL(
-      new Blob([videoData], { type: 'video/mp4' })
-    )
+    const blob = new Blob([buffer], { type: 'video/mp4' })
+    const url = URL.createObjectURL(blob)
 
     setVideoUrl(url)
     setLoading(false)
   }
 
   return (
-    <main
-      style={{
-        padding: 40,
-        background: '#000',
-        minHeight: '100vh',
-        color: '#fff',
-      }}
-    >
-      <h1>MP3 + 画像 → MP4 生成</h1>
+    <main style={{ padding: 40, background: '#000', minHeight: '100vh', color: '#fff' }}>
+      <h1>MP3 + 画像 → MP4</h1>
 
       <DropZone
-        label="① 音声ファイル（MP3など）"
+        label="① 音声ファイル"
         accept="audio/*"
         file={audio}
         onFile={setAudio}
       />
 
       <DropZone
-        label="② 画像ファイル（PNG / JPG）"
+        label="② 画像ファイル"
         accept="image/*"
         file={image}
         onFile={setImage}
@@ -156,15 +145,14 @@ export default function Page() {
 
       <button
         onClick={generateVideo}
-        disabled={loading || !audio || !image}
+        disabled={!audio || !image || loading}
         style={{
           padding: '12px 20px',
           fontSize: 16,
           borderRadius: 8,
-          border: 'none',
-          cursor: 'pointer',
-          background: loading || !audio || !image ? '#555' : '#43a047',
+          background: loading ? '#555' : '#43a047',
           color: '#fff',
+          border: 'none',
         }}
       >
         {loading ? '生成中…' : '動画生成'}
@@ -172,11 +160,7 @@ export default function Page() {
 
       {videoUrl && (
         <p style={{ marginTop: 20 }}>
-          <a
-            href={videoUrl}
-            download="output.mp4"
-            style={{ color: '#4fc3f7' }}
-          >
+          <a href={videoUrl} download="output.mp4" style={{ color: '#4fc3f7' }}>
             MP4をダウンロード
           </a>
         </p>
