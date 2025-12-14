@@ -111,17 +111,18 @@ export default function Page() {
       'output.mp4',
     ])
 
-    const data = await ffmpeg.readFile('output.mp4')
+// ffmpeg.readFile の返り値を Uint8Array として取得
+const data = await ffmpeg.readFile('output.mp4')
 
-    // ★ ここが最重要ポイント
-    const buffer = data instanceof Uint8Array
-      ? data.buffer.slice(0)
-      : data
+// Uint8Array に統一
+const uint8Array = data instanceof Uint8Array ? data : new Uint8Array(data as any)
 
-    const blob = new Blob([buffer], { type: 'video/mp4' })
-    const url = URL.createObjectURL(blob)
+// Blob 作成
+const blob = new Blob([uint8Array.buffer], { type: 'video/mp4' })
+const url = URL.createObjectURL(blob)
 
-    setVideoUrl(url)
+setVideoUrl(url)
+
     setLoading(false)
   }
 
