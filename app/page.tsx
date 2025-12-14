@@ -88,6 +88,7 @@ export default function Page() {
   const [image, setImage] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
+  const [fileName, setFileName] = useState('output.mp4') // ダウンロード名用
 
   const generateVideo = async () => {
     if (!audio || !image) return
@@ -111,19 +112,23 @@ export default function Page() {
       'output.mp4',
     ])
 
-// ffmpeg.readFile の返り値を Uint8Array として取得
-const data = await ffmpeg.readFile('output.mp4')
-
-// Uint8Array に統一
-const uint8Array = data instanceof Uint8Array ? data : new Uint8Array(data as any)
-
-// Blob 作成
-const blob = new Blob([uint8Array.buffer], { type: 'video/mp4' })
-const url = URL.createObjectURL(blob)
-
-setVideoUrl(url)
+    const data = await ffmpeg.readFile('output.mp4')
+    const uint8Array = data instanceof Uint8Array ? data : new Uint8Array(data as any)
+    const blob = new Blob([uint8Array.buffer], { type: 'video/mp4' })
+    const url = URL.createObjectURL(blob)
+    setVideoUrl(url)
 
     setLoading(false)
+  }
+
+  // ダウンロード用の安全なファイル名を返す
+  const getDownloadName = () => {
+    let name = fileName.trim() || 'output'
+
+    // ファイル名に使えない文字を除去
+    name = name.replace(/[\/\\:*?"<>|]/g, '')
+
+    return name.toLowerCase().endsWith('.mp4') ? name : `${name}.mp4`
   }
 
   return (
@@ -160,11 +165,18 @@ setVideoUrl(url)
       </button>
 
       {videoUrl && (
-        <p style={{ marginTop: 20 }}>
-          <a href={videoUrl} download="output.mp4" style={{ color: '#4fc3f7' }}>
+        <div style={{ marginTop: 20 }}>
+          <input
+            type="text"
+            value={fileName}
+            onChange={e => setFileName(e.target.value)}
+            placeholder="ファイル名を入力"
+            style={{ marginRight: 10, padding: '6px 8px', borderRadius: 4 }}
+          />
+          <a href={videoUrl} download={getDownloadName()} style={{ color: '#4fc3f7' }}>
             MP4をダウンロード
           </a>
-        </p>
+        </div>
       )}
     </main>
   )
