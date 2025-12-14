@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, DragEvent } from 'react'
+import { FFmpeg } from '@ffmpeg/ffmpeg'
+import { fetchFile } from '@ffmpeg/util'
 
 type DropZoneProps = {
   label: string
@@ -94,16 +96,8 @@ export default function Page() {
     setLoading(true)
     setVideoUrl(null)
 
-    // ✅ dynamic import（Vercel対策）
-    const { FFmpeg } = await import('@ffmpeg/ffmpeg')
-    const { fetchFile } = await import('@ffmpeg/util')
-
     const ffmpeg = new FFmpeg()
-
-    await ffmpeg.load({
-      coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/ffmpeg-core.js',
-      wasmURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/ffmpeg-core.wasm',
-    })
+    await ffmpeg.load()
 
     await ffmpeg.writeFile('audio.mp3', await fetchFile(audio))
     await ffmpeg.writeFile('image.png', await fetchFile(image))
@@ -136,7 +130,14 @@ export default function Page() {
   }
 
   return (
-    <main style={{ padding: 40, background: '#000', minHeight: '100vh', color: '#fff' }}>
+    <main
+      style={{
+        padding: 40,
+        background: '#000',
+        minHeight: '100vh',
+        color: '#fff',
+      }}
+    >
       <h1>MP3 + 画像 → MP4 生成</h1>
 
       <DropZone
@@ -171,7 +172,11 @@ export default function Page() {
 
       {videoUrl && (
         <p style={{ marginTop: 20 }}>
-          <a href={videoUrl} download="output.mp4" style={{ color: '#4fc3f7' }}>
+          <a
+            href={videoUrl}
+            download="output.mp4"
+            style={{ color: '#4fc3f7' }}
+          >
             MP4をダウンロード
           </a>
         </p>
