@@ -23,7 +23,7 @@ export default function VideoGenerator() {
     setLoading(true)
     setVideoUrl(null)
 
-    // ffmpeg は Client で dynamic import
+    // ffmpeg は Client Component で dynamic import
     const { FFmpeg } = await import('@ffmpeg/ffmpeg')
     const { fetchFile } = await import('@ffmpeg/util')
 
@@ -49,9 +49,8 @@ export default function VideoGenerator() {
 
     const data = await ffmpeg.readFile('output.mp4')
 
-    // ✅ buffer を使わない（これが超重要）
     const blob = new Blob(
-      [data instanceof Uint8Array ? data : new TextEncoder().encode(data)],
+      [data instanceof Uint8Array ? data : new Uint8Array(data)],
       { type: 'video/mp4' }
     )
 
@@ -68,14 +67,12 @@ export default function VideoGenerator() {
         onDrop={handleDrop}
         onDragOver={e => e.preventDefault()}
         style={{
-          border: '2px dashed #666',
+          border: '2px dashed #555',
           padding: 40,
           marginTop: 20,
-          borderRadius: 8,
         }}
       >
-        <p>ここに音声と画像をドラッグ＆ドロップ</p>
-
+        ドラッグ＆ドロップ
         <div style={{ marginTop: 10 }}>
           <input
             type="file"
@@ -83,7 +80,6 @@ export default function VideoGenerator() {
             onChange={e => setAudio(e.target.files?.[0] ?? null)}
           />
         </div>
-
         <div style={{ marginTop: 10 }}>
           <input
             type="file"
@@ -91,17 +87,12 @@ export default function VideoGenerator() {
             onChange={e => setImage(e.target.files?.[0] ?? null)}
           />
         </div>
-
-        <div style={{ marginTop: 10, fontSize: 14 }}>
-          {audio && <div>🎵 {audio.name}</div>}
-          {image && <div>🖼 {image.name}</div>}
-        </div>
       </div>
 
       <button
         onClick={generateVideo}
         disabled={!audio || !image || loading}
-        style={{ marginTop: 20, padding: '10px 20px' }}
+        style={{ marginTop: 20 }}
       >
         {loading ? '生成中…' : '動画生成'}
       </button>
@@ -109,7 +100,7 @@ export default function VideoGenerator() {
       {videoUrl && (
         <p style={{ marginTop: 20 }}>
           <a href={videoUrl} download="output.mp4">
-            ⬇ MP4をダウンロード
+            ⬇ ダウンロード
           </a>
         </p>
       )}
