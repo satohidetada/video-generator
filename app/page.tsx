@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, DragEvent } from 'react'
+import { useState, DragEvent, useRef } from 'react'
 import { FFmpeg } from '@ffmpeg/ffmpeg'
-import { fetchFile } from '@ffmpeg/util'
+import { fetchFile, toBlobURL } from '@ffmpeg/util'
 
+// --- ドロップゾーン・コンポーネント ---
 type DropZoneProps = {
   label: string
   accept: string
@@ -23,72 +24,47 @@ function DropZone({ label, accept, file, onFile }: DropZoneProps) {
 
   return (
     <div
-      onDragOver={e => {
-        e.preventDefault()
-        setDragging(true)
-      }}
+      onDragOver={e => { e.preventDefault(); setDragging(true); }}
       onDragLeave={() => setDragging(false)}
       onDrop={onDrop}
       style={{
-        border: `2px dashed ${file ? '#666' : '#e53935'}`,
+        border: `2px dashed ${file ? '#4caf50' : '#e53935'}`,
         borderRadius: 12,
         padding: 20,
         marginBottom: 20,
         background: dragging ? '#222' : '#111',
         color: '#fff',
         position: 'relative',
+        textAlign: 'center'
       }}
     >
       <div style={{ marginBottom: 10, fontWeight: 'bold' }}>{label}</div>
-
-      <label
-        style={{
-          display: 'inline-block',
-          padding: '10px 16px',
-          background: '#1976d2',
-          borderRadius: 6,
-          cursor: 'pointer',
-        }}
-      >
+      <label style={{
+        display: 'inline-block',
+        padding: '10px 16px',
+        background: '#1976d2',
+        borderRadius: 6,
+        cursor: 'pointer',
+      }}>
         ファイルを選択
-        <input
-          type="file"
-          accept={accept}
-          hidden
-          onChange={e => onFile(e.target.files?.[0] ?? null)}
-        />
+        <input type="file" accept={accept} hidden onChange={e => onFile(e.target.files?.[0] ?? null)} />
       </label>
-
       <div style={{ marginTop: 10, fontSize: 14 }}>
         {file ? `選択中: ${file.name}` : '未選択'}
       </div>
-
-      {dragging && (
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            background: 'rgba(0,0,0,0.6)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 18,
-            fontWeight: 'bold',
-          }}
-        >
-          ここにドロップしてください
-        </div>
-      )}
     </div>
   )
 }
 
+// --- メインページ ---
 export default function Page() {
   const [audio, setAudio] = useState<File | null>(null)
   const [image, setImage] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
-  const [fileName, setFileName] = useState('output.mp4') // ダウンロード名用
+  const [fileName, setFileName] = useState('output.mp4')
+  
+  const ffmpegRef = useRef<FFmpeg | null>(null)
 
   const generateVideo = async () => {
     if (!audio || !image) return
@@ -96,88 +72,100 @@ export default function Page() {
     setLoading(true)
     setVideoUrl(null)
 
-    const ffmpeg = new FFmpeg()
-    await ffmpeg.load()
+    if (!ffmpegRef.current) {
+      ffmpegRef.current = new FFmpeg()
+    }
+    const ffmpeg = ffmpegRef.current
 
-    await ffmpeg.writeFile('audio.mp3', await fetchFile(audio))
-    await ffmpeg.writeFile('image.png', await fetchFile(image))
+    try {
+      if (!ffmpeg.loaded) {
+        const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd'
+        await ffmpeg.load({
+          coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+          wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+        })
+      }
 
-    await ffmpeg.exec([
-      '-loop', '1',
-      '-i', 'image.png',
-      '-i', 'audio.mp3',
-      '-c:v', 'libx264',
-      '-pix_fmt', 'yuv420p',
-      '-shortest',
-      'output.mp4',
-    ])
+      await ffmpeg.writeFile('audio.mp3', await fetchFile(audio))
+      await ffmpeg.writeFile('image.png', await fetchFile(image))
 
-    const data = await ffmpeg.readFile('output.mp4')
-    const uint8Array = data instanceof Uint8Array ? data : new Uint8Array(data as any)
-    const blob = new Blob([uint8Array.buffer], { type: 'video/mp4' })
-    const url = URL.createObjectURL(blob)
-    setVideoUrl(url)
+      await ffmpeg.exec([
+        '-loop', '1',
+        '-i', 'image.png',
+        '-i', 'audio.mp3',
+        '-c:v', 'libx264',
+        '-tune', 'stillimage',
+        '-c:a', 'aac', 
+        '-b:a', '192k',
+        '-pix_fmt', 'yuv420p',
+        '-shortest',
+        'output.mp4',
+      ])
 
-    setLoading(false)
+      // ファイルの読み込み
+      const data = await ffmpeg.readFile('output.mp4')
+      
+      // --- エラー箇所の修正ポイント ---
+      // SharedArrayBufferが含まれるデータ(data)をそのまま入れると型エラーになるため
+      // 一時的に any にキャストして BlobPart として認識させます。
+      const blob = new Blob([data as any], { type: 'video/mp4' })
+      
+      const url = URL.createObjectURL(blob)
+      setVideoUrl(url)
+
+    } catch (error) {
+      console.error('FFmpeg Error:', error)
+      alert('動画の生成中にエラーが発生しました。')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  // ダウンロード用の安全なファイル名を返す
   const getDownloadName = () => {
     let name = fileName.trim() || 'output'
-
-    // ファイル名に使えない文字を除去
     name = name.replace(/[\/\\:*?"<>|]/g, '')
-
     return name.toLowerCase().endsWith('.mp4') ? name : `${name}.mp4`
   }
 
   return (
     <main style={{ padding: 40, background: '#000', minHeight: '100vh', color: '#fff' }}>
-      <h1>MP3 + 画像 → MP4</h1>
+      <div style={{ maxWidth: 600, margin: '0 auto' }}>
+        <h1 style={{ textAlign: 'center' }}>MP3 + 画像 → MP4</h1>
 
-      <DropZone
-        label="① 音声ファイル"
-        accept="audio/*"
-        file={audio}
-        onFile={setAudio}
-      />
+        <DropZone label="① 音声ファイル" accept="audio/*" file={audio} onFile={setAudio} />
+        <DropZone label="② 画像ファイル" accept="image/*" file={image} onFile={setImage} />
 
-      <DropZone
-        label="② 画像ファイル"
-        accept="image/*"
-        file={image}
-        onFile={setImage}
-      />
+        <button
+          onClick={generateVideo}
+          disabled={!audio || !image || loading}
+          style={{
+            width: '100%', padding: '12px 20px', fontSize: 16, borderRadius: 8,
+            background: loading ? '#555' : '#43a047', color: '#fff', border: 'none',
+            cursor: loading ? 'not-allowed' : 'pointer'
+          }}
+        >
+          {loading ? '生成中…' : '動画生成'}
+        </button>
 
-      <button
-        onClick={generateVideo}
-        disabled={!audio || !image || loading}
-        style={{
-          padding: '12px 20px',
-          fontSize: 16,
-          borderRadius: 8,
-          background: loading ? '#555' : '#43a047',
-          color: '#fff',
-          border: 'none',
-        }}
-      >
-        {loading ? '生成中…' : '動画生成'}
-      </button>
-
-      {videoUrl && (
-        <div style={{ marginTop: 20 }}>
-          <input
-            type="text"
-            value={fileName}
-            onChange={e => setFileName(e.target.value)}
-            placeholder="ファイル名を入力"
-            style={{ marginRight: 10, padding: '6px 8px', borderRadius: 4 }}
-          />
-          <a href={videoUrl} download={getDownloadName()} style={{ color: '#4fc3f7' }}>
-            MP4をダウンロード
-          </a>
-        </div>
-      )}
+        {videoUrl && (
+          <div style={{ marginTop: 30, textAlign: 'center', background: '#111', padding: 20, borderRadius: 12 }}>
+            <input
+              type="text"
+              value={fileName}
+              onChange={e => setFileName(e.target.value)}
+              placeholder="ファイル名を入力"
+              style={{ marginBottom: 15, padding: '8px', borderRadius: 4, width: '80%', color: '#000' }}
+            />
+            <br />
+            <a href={videoUrl} download={getDownloadName()} style={{ 
+              color: '#000', background: '#4fc3f7', padding: '10px 20px', 
+              borderRadius: 6, textDecoration: 'none', fontWeight: 'bold' 
+            }}>
+              MP4をダウンロード
+            </a>
+          </div>
+        )}
+      </div>
     </main>
   )
 }
