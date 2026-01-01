@@ -4,7 +4,7 @@ import { useState, DragEvent, useRef } from 'react'
 import { FFmpeg } from '@ffmpeg/ffmpeg'
 import { fetchFile, toBlobURL } from '@ffmpeg/util'
 
-// --- ドロップゾーン・コンポーネント (既存そのまま) ---
+// --- ドロップゾーン・コンポーネント (変更なし) ---
 type DropZoneProps = {
   label: string
   accept: string
@@ -86,7 +86,6 @@ export default function Page() {
         })
       }
 
-      // ログ監視（エラー時に原因をコンソールに出すため）
       ffmpeg.on('log', ({ message }) => console.log(message))
 
       await ffmpeg.writeFile('audio.mp3', await fetchFile(audio))
@@ -96,7 +95,7 @@ export default function Page() {
         '-loop', '1',
         '-i', 'image.png',
         '-i', 'audio.mp3',
-        '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2', // ← 追加：奇数サイズを自動で偶数に補正
+        '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2',
         '-c:v', 'libx264',
         '-tune', 'stillimage',
         '-c:a', 'aac', 
@@ -108,7 +107,6 @@ export default function Page() {
 
       const data = await ffmpeg.readFile('output.mp4')
       
-      // 0バイトチェック
       if ((data as Uint8Array).length === 0) {
         throw new Error('FFmpeg output is empty.')
       }
@@ -119,7 +117,7 @@ export default function Page() {
 
     } catch (error) {
       console.error('FFmpeg Error:', error)
-      alert('動画生成に失敗しました。画像のサイズが特殊すぎるか、ファイルが壊れている可能性があります。')
+      alert('動画生成に失敗しました。')
     } finally {
       setLoading(false)
     }
@@ -152,20 +150,38 @@ export default function Page() {
         </button>
 
         {videoUrl && (
-          <div style={{ marginTop: 30, textAlign: 'center', background: '#111', padding: 20, borderRadius: 12 }}>
+          <div style={{ marginTop: 30, textAlign: 'center', background: '#111', padding: 25, borderRadius: 12, border: '1px solid #333' }}>
+            <div style={{ marginBottom: 10, fontSize: 14, color: '#bbb' }}>保存ファイル名</div>
             <input
               type="text"
               value={fileName}
               onChange={e => setFileName(e.target.value)}
               placeholder="ファイル名を入力"
-              style={{ marginBottom: 15, padding: '8px', borderRadius: 4, width: '80%', color: '#000' }}
+              style={{ 
+                marginBottom: 20, 
+                padding: '12px', 
+                borderRadius: 6, 
+                width: '100%', 
+                boxSizing: 'border-box',
+                background: '#fff',   // 背景を白に
+                color: '#000',        // 文字を黒に
+                border: 'none',
+                fontSize: '16px',
+                fontWeight: 'bold'
+              }}
             />
             <br />
             <a href={videoUrl} download={getDownloadName()} style={{ 
-              color: '#000', background: '#4fc3f7', padding: '10px 20px', 
-              borderRadius: 6, textDecoration: 'none', fontWeight: 'bold' 
+              display: 'block',
+              color: '#000', 
+              background: '#4fc3f7', 
+              padding: '14px 20px', 
+              borderRadius: 8, 
+              textDecoration: 'none', 
+              fontWeight: 'bold',
+              fontSize: '18px'
             }}>
-              MP4をダウンロード
+              📥 MP4をダウンロード
             </a>
           </div>
         )}
