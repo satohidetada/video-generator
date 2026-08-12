@@ -1,34 +1,42 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useState } from 'react'
 
-const PC_TAG = 'https://adm.shinobi.jp/s/7021f12f19dc21fce8c40e890fb56e8c'
-const SP_TAG = 'https://adm.shinobi.jp/s/2c5d0dc7ae117f6fff260f3d2323bf65'
+const PC = {
+  src: 'https://adm.shinobi.jp/s/7021f12f19dc21fce8c40e890fb56e8c',
+  w: 300,
+  h: 250,
+}
+const SP = {
+  src: 'https://adm.shinobi.jp/s/2c5d0dc7ae117f6fff260f3d2323bf65',
+  w: 320,
+  h: 100,
+}
 
 export default function AdMax() {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const injected = useRef(false)
+  const [ad, setAd] = useState<typeof PC | null>(null)
 
   useEffect(() => {
-    if (injected.current || !containerRef.current) return
-    injected.current = true
-
-    const isMobile = window.matchMedia('(max-width: 767px)').matches
-    const script = document.createElement('script')
-    script.src = isMobile ? SP_TAG : PC_TAG
-    script.async = true
-    containerRef.current.appendChild(script)
+    setAd(window.matchMedia('(max-width: 767px)').matches ? SP : PC)
   }, [])
 
+  if (!ad) return <div style={{ minHeight: 120 }} />
+
+  const html =
+    '<!DOCTYPE html><html><head><meta charset="utf-8">' +
+    '<style>html,body{margin:0;padding:0;overflow:hidden}</style></head>' +
+    '<body><script src="' + ad.src + '"><\/script></body></html>'
+
   return (
-    <div
-      ref={containerRef}
-      style={{
-        display: 'flex',
-        justifyContent: 'center',
-        margin: '40px 0 0',
-        minHeight: 100,
-      }}
-    />
+    <div style={{ display: 'flex', justifyContent: 'center', margin: '40px 0 0' }}>
+      <iframe
+        srcDoc={html}
+        width={ad.w}
+        height={ad.h}
+        scrolling="no"
+        style={{ border: 0, display: 'block' }}
+        title="広告"
+      />
+    </div>
   )
 }
