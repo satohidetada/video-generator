@@ -61,6 +61,7 @@ export default function Page() {
   const [audio, setAudio] = useState<File | null>(null)
   const [image, setImage] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
+  const [progress, setProgress] = useState(0)
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
   const [fileName, setFileName] = useState('output.mp4')
   
@@ -70,10 +71,14 @@ export default function Page() {
     if (!audio || !image) return
 
     setLoading(true)
+    setProgress(0)
     setVideoUrl(null)
 
     if (!ffmpegRef.current) {
       ffmpegRef.current = new FFmpeg()
+      ffmpegRef.current.on('progress', ({ progress: p }) => {
+        setProgress(Math.max(0, Math.min(100, Math.round(p * 100))))
+      })
     }
     const ffmpeg = ffmpegRef.current
 
@@ -149,7 +154,7 @@ export default function Page() {
             cursor: loading ? 'not-allowed' : 'pointer'
           }}
         >
-          {loading ? '生成中…' : '動画生成'}
+          {loading ? `生成中… ${progress}%` : '動画生成'}
         </button>
 
         {videoUrl && (
