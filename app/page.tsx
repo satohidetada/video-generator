@@ -86,18 +86,21 @@ export default function Page() {
         })
       }
 
-      ffmpeg.on('log', ({ message }) => console.log(message))
+      
 
       await ffmpeg.writeFile('audio.mp3', await fetchFile(audio))
       await ffmpeg.writeFile('image.png', await fetchFile(image))
 
       await ffmpeg.exec([
         '-loop', '1',
+        '-framerate', '2',
         '-i', 'image.png',
         '-i', 'audio.mp3',
         '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2',
         '-c:v', 'libx264',
         '-tune', 'stillimage',
+        '-preset', 'ultrafast',
+        '-r', '2',
         '-c:a', 'aac', 
         '-b:a', '192k',
         '-pix_fmt', 'yuv420p',
