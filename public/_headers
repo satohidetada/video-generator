@@ -1,3 +1,5 @@
-/*
-  Cross-Origin-Opener-Policy: same-origin
-  Cross-Origin-Embedder-Policy: require-corp
+# COOP/COEP は SharedArrayBuffer 用。単一スレッド版 ffmpeg では不要。
+# 有効にすると外部広告スクリプトがブロックされるため無効化している。
+# /*
+#   Cross-Origin-Opener-Policy: same-origin
+#   Cross-Origin-Embedder-Policy: require-corp
