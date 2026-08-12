@@ -1,4 +1,4 @@
-const FORM_URL = 'https://forms.gle/XXXXXXXXXXXX'
+const FORM_URL = 'https://forms.gle/89rAyxY4YG4p48CP6'
 
 export const metadata = {
   title: 'お問い合わせ | dhlemons',
